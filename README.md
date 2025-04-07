@@ -94,7 +94,6 @@ python-dotenv
 
 ## 🎯 Future Enhancements
 
-- 🎙️ **Real-Time Content**: Fetch live podcasts or audiobooks via Kuku FM API.
 - 🧬 **Personalized Recommendations**: ML-powered content suggestions.
 - 🌐 **Multilingual Support**: Add Hindi, Tamil, and more TTS options.
 - ⏱️ **Custom Briefings**: Let users choose length or voice style.
