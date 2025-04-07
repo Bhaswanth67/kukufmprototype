@@ -140,7 +140,7 @@ if st.button("Generate My Briefing"):
 
 # New section: Generate Your Own Story
 with st.expander("Generate Your Own Story"):
-    st.write("Enter keywords to generate a custom story or click 'Get Random Keywords' for inspiration.")
+    st.write("Enter keywords and specify a word count (100–5000 words) to generate a custom story, or click 'Get Random Keywords' for inspiration.")
     
     # List of words for random keyword generation
     word_list = [
@@ -157,6 +157,9 @@ with st.expander("Generate Your Own Story"):
     # Input field for keywords
     keywords_input = st.text_input("Keywords (comma-separated, up to 3):", key="keywords_input")
     
+    # Input for word count
+    word_count = st.number_input("Desired word count (100–5000 words):", min_value=100, max_value=5000, step=100, value=1000)
+    
     # Button to generate the story
     if st.button("Generate Story"):
         if keywords_input:
@@ -169,10 +172,14 @@ with st.expander("Generate Your Own Story"):
                     chat = start_llm_chat()
                     story_parts = []
                     current_word_count = 0
-                    target_word_count = 2500
+                    target_word_count = word_count
 
-                    # Initial prompt
-                    initial_prompt = f"Create the beginning of a detailed, engaging story that includes the following keywords: {', '.join(keywords)}. Aim for about 500 words and ensure the story is suitable for audio narration."
+                    # Initial prompt with word count guidance
+                    initial_prompt = (
+                        f"Create the beginning of a detailed, engaging story that includes the following keywords: {', '.join(keywords)}. "
+                        f"The entire story should be approximately {target_word_count} words and suitable for audio narration. "
+                        f"Start with about {min(500, target_word_count)} words."
+                    )
                     response = send_llm_message(chat, initial_prompt)
                     part = ""
                     for chunk in response:
@@ -183,7 +190,11 @@ with st.expander("Generate Your Own Story"):
 
                     # Continue generating parts until close to target
                     while current_word_count < (target_word_count - 500):
-                        continue_prompt = "Continue the story from where you left off, adding another 500 words. Keep it engaging, coherent, and aligned with the keywords."
+                        remaining_words = target_word_count - current_word_count
+                        continue_prompt = (
+                            f"Continue the story from where you left off, adding approximately {min(500, remaining_words)} words. "
+                            f"Keep it engaging, coherent, and aligned with the keywords {', '.join(keywords)}."
+                        )
                         response = send_llm_message(chat, continue_prompt)
                         part = ""
                         for chunk in response:
@@ -193,14 +204,19 @@ with st.expander("Generate Your Own Story"):
                         status_text.write(f"Generated {len(story_parts)} parts: {current_word_count} words")
 
                     # Final part to conclude the story
-                    final_prompt = f"Conclude the story from where you left off, ensuring it wraps up completely and includes the keywords {', '.join(keywords)}. Add enough content to reach a total of at least 2500 words when combined with previous parts (current word count is {current_word_count})."
-                    response = send_llm_message(chat, final_prompt)
-                    part = ""
-                    for chunk in response:
-                        part += chunk.text
-                    story_parts.append(part)
-                    current_word_count += len(part.split())
-                    status_text.write(f"Story completed with {len(story_parts)} parts: {current_word_count} words")
+                    remaining_words = target_word_count - current_word_count
+                    if remaining_words > 0:
+                        final_prompt = (
+                            f"Conclude the story from where you left off, ensuring it wraps up completely and includes the keywords {', '.join(keywords)}. "
+                            f"Add approximately {remaining_words} words to reach a total of {target_word_count} words."
+                        )
+                        response = send_llm_message(chat, final_prompt)
+                        part = ""
+                        for chunk in response:
+                            part += chunk.text
+                        story_parts.append(part)
+                        current_word_count += len(part.split())
+                        status_text.write(f"Story completed with {len(story_parts)} parts: {current_word_count} words")
 
                     full_story = " ".join(story_parts)
                     st.session_state['story'] = full_story
@@ -215,8 +231,10 @@ with st.expander("Generate Your Own Story"):
     # Button to listen to the story
     if 'story' in st.session_state:
         if st.button("Listen to Story"):
-            st.write("Note: The story is at least 2500 words long, so the audio may take around 15-20 minutes to play.")
-            with st.spinner("Generating audio for the story... This may take a while due to the story's length."):
+            word_count_actual = len(st.session_state['story'].split())
+            audio_minutes = word_count_actual / 150  # Assuming 150 words per minute for speech
+            st.write(f"Note: The story is approximately {word_count_actual} words long, so the audio may take around {audio_minutes:.1f} minutes to play.")
+            with st.spinner("Generating audio for the story... This may take a while."):
                 audio_file = text_to_speech(st.session_state['story'])
                 st.audio(audio_file)
 
